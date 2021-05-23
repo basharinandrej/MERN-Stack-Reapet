@@ -1,30 +1,29 @@
 import React from 'react'
-import {Switch, Route, Redirect} from 'react-router-dom'
-import Auth from "./pages/Auth";
-import Links from "./pages/Links";
-import Details from "./pages/Details";
-import Create from "./pages/Create";
+import {Redirect, Route, Switch} from "react-router-dom";
+import CreatePage from "./pages/CreatePage/CreatePage";
+import AuthPage from "./pages/AuthPage/AuthPage";
+import DetailPage from "./pages/DetailPage";
+import LinksPage from "./pages/LinksPage/Links";
 
-const routes = ({isAuth}) => {
-    if (isAuth) {
-        return <Switch>
-            <Route path="/" exact render={() => <Auth />}/>
-            <Route path="/links" render={() => <Links />}/>
-            <Route path="/details/:id" render={() => <Details />}/>
-            <Route path="/create" render={() => <Create />}/>
-            <Redirect to="/create"/>
-        </Switch>
+
+const Routes = ({ isAuthenticated }) => {
+    if ( isAuthenticated ) {
+        return (
+            <Switch>
+                <Route path="/links" exact render={() => <LinksPage/>} />
+                <Route path="/create" exact render={() => <CreatePage/>} />
+                <Route path="/details/:id" render={() => <DetailPage/>} />
+                <Redirect to="/create" />
+            </Switch>
+        )
     }
 
     return (
         <Switch>
-            <Route path="/" exact render={() => <Auth />}/>
-            <Route path="/links" render={() => <Links />}/>
-            <Route path="/details/:id" render={() => <Details />}/>
-            <Route path="/create" render={() => <Create />}/>
+            <Route path="/" exact render={() => <AuthPage/>} />
             <Redirect to="/" />
         </Switch>
-    )
+    );
 }
 
-export default routes
+export default Routes

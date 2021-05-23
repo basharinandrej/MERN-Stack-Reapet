@@ -1,83 +1,76 @@
 const {Router} = require('express')
+const User = require('../models/user')
 const bcryptjs = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const config = require('config')
-const {check, validationResult} = require('express-validator')
+const {check, validationResult } = require('express-validator')
 
 const router = Router()
-const User = require('../models/user')
-
 
 router.post('/register',
-[
+    [
         check('email', 'Не корректный email').isEmail(),
-        check('password', 'Минимальная длина пароля 6 симвлов').isLength({min: 6})
+        check('password', 'Не корректный пароль. Его длина должна быть не менее 6 символов').isLength({min: 6})
     ],
     async (req, res) => {
     try {
         const errors = validationResult(req)
-
         if(!errors.isEmpty()) {
             return res.status(400).json({
-                'errors': errors.array(),
-                'message': 'Не корректные данные'
+                message: 'Не корректные данные регистрации',
+                errors: errors.array()
             })
         }
-        console.log('req', req.body);
-        const {email, password} = req.body
 
+        const {email, password} = req.body
         const candidate = await User.findOne({email})
         if (candidate) {
-            res.status(400).json({message: 'Такой пользователь есть'})
+            return res.status(400).json({message: 'Такой пользователь уже есть'})
         }
 
-        const hashPassword = bcryptjs.hash(password)
+        const hashPassword = await bcryptjs.hash(password, 12)
         const user = new User({email, password: hashPassword})
-        user.save()
-
-        res.status(200).json({message: 'Пользователь создан'})
+        await user.save()
+        res.json({message: 'Пользователь добавлен'})
 
     } catch (e) {
-        res.status(500).json({message: e})
-        throw Error(e)
+        res.status(500).json({message: 'Какая-то ошибка при регистрации'})
     }
 })
 
 router.post('/login',
     [
-        check('email', 'Не коректный Email').isEmail(),
-        check('password', 'Поле обязательно для заполнеия').exists()
+        check('email', 'Не корректный email').isEmail(),
+        check('password', 'Не корректный пароль. Его длина должна быть не менее 6 символов').isLength({min: 6})
     ],
-    async (req, res) => {
+    async(req, res)=> {
     try {
         const errors = validationResult(req)
         if(!errors.isEmpty()) {
-            res.status(400).json({
-                'errors': errors.array(),
-                'message': 'Не корректные данные'
+            return res.status(400).json({
+                message: 'Не корректные данные входа',
+                errors: errors.array()
             })
         }
-
         const {email, password} = req.body
-
-        const candidate = await User.findOne({email})
-        if (!candidate) {
-            res.status(400).json({message: 'Такого пользвателя нет'})
+        const user = await User.findOne({email})
+        if (!user) {
+            return res.status(400).json({message: 'Такго пользователя нет'})
         }
 
-        const isMatch = bcryptjs.compare(candidate.password, password)
-        !isMatch && res.status(400).json({message: 'Не корректный пароль'})
-
-        const token = jwt.sign(
-            {userId: candidate.id},
-            config.get('JWTSecret'),
-            { expiresIn: '1h' }
+        const isMatch = await bcryptjs.compare(password, user.password)
+        if (!isMatch) {
+            return res.status(400).json({message: 'Пароли не совпадают'})
+        }
+        const jwtToken = jwt.sign(
+            {userId: user._id},
+            config.get('jwtSecretKey'),
+            {expiresIn: '1h'}
         )
 
-        res.json({token, userId: candidate.id})
+        res.status(200).json({userId: user._id, token:jwtToken})
     } catch (e) {
-        res.status(500).json({message: e})
-        throw Error(e)
+        res.status(500).json({message: 'Какая-то ошибка при входе'})
     }
 })
 
